@@ -6,7 +6,7 @@ library(dplyr)
 otu.count.min <- 2000
 otu.sample.min <- 2
 k <- 50
-prune.min.cor <- 0.75
+prune.max.div <- 0.25
 filter.min.size <- 2
 out.fn <- "groups_old.dat"
 
@@ -38,14 +38,13 @@ otu <- select(otu, -M3.1, -M3.2, -M8.1, -M8.2)
 # swo> this should have been done before dropping any rows
 otu <- apply(otu, 2, function(x) x / sum(x)) %>% as.data.frame
 
-printf("after preprocessing, there are %d OTUs left\n", dim(otu)[1])
-
 # normalize the OTUs by row
 otu <- apply(otu, 1, function(x) x / sum(x)) %>% t %>% as.data.frame
 
-# compute the dissimilarities
+# compute the dissimilarities: euclidean distance and correlation "divergence"
+# (i.e., 1 - correlation)
 euc.dist <- dist(otu, method="euclidean")
-cor.dist <- cor(t(otu))
+cor.div <- 1.0 - cor(t(otu))
 
 # do the clustering
 fit <- hclust(euc.dist, method='ward.D')
@@ -60,22 +59,23 @@ prune <- function(groups, i) {
     if (length(members) == 1) break
     idx <- as.numeric(members)
     
-    # for each member of the group, find its mean correlation
-    these.cors <- cor.dist[idx, idx]
-    diag(these.cors) <- NA
-    mean.cors <- rowMeans(these.cors, na.rm=T)
+    # for each member of the group, find its mean correlation divergence
+    these.divs <- cor.div[idx, idx]
+    diag(these.divs) <- NA
+    mean.divs <- rowMeans(these.divs, na.rm=T)
     
-    # if the minimum mean correlation is above a threshold, we're done
-    min.mean.cor <- min(mean.cors)
-    if (min.mean.cor > prune.min.cor) {
-      sprintf("group %d has minimum mean correlation %f (i.e., %f), keeping it\n", i, min.mean.cor, 1.0-min.mean.cor) %>% cat
+    # if the maximum mean correlation is below the threshold, we're done
+    max.mean.div <- max(mean.divs)
+    if (max.mean.div < prune.max.div) {
+      printf("group %d has max mean divergence %f, keeping it\n", i, max.mean.div)
       pruning <- FALSE
     } else {
       # prune the worst performer
-      # swo> what about ties? should keep the most abundant
-      min.idx <- which(mean.cors == min(mean.cors)) %>% tail(1)
-      printf("from group %d, pruning member %d, whose mean was %f (i.e., %f)\n", i, min.idx, min.mean.cor, 1.0-min.mean.cor)
-      groups[members[min.idx]] <- NA
+      # swo> what about ties? should keep the most abundant, but following the old
+      # standard of numpy.argmax, which grabs FIRST index
+      max.idx <- which(mean.divs == max(mean.divs)) %>% head(1)
+      printf("from group %d, pruning member %d (id %d), whose mean was %f\n", i, max.idx, members[max.idx], max.mean.div)
+      groups[members[max.idx]] <- NA
     }
   }
   # return the new groups vector, which may have had some elements replaced by NAs
