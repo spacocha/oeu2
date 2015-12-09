@@ -4,9 +4,9 @@ library(dplyr)
 
 # global parameters
 k <- 50
-prune.min.cor <- 0.25
+prune.min.cor <- 0.75
 filter.min.size <- 2
-out.fn <- "groups.txt"
+out.fn <- "groups.dat"
 
 # read in OTU table
 otu <- read.table("otu.txt", header=T, sep="\t", row.names=1)
@@ -16,11 +16,14 @@ otu$M3.pool <- otu$M3.1 + otu$M3.2
 otu$M8.pool <- otu$M8 + otu$M8.2
 otu <- otu[, !(colnames(otu) %in% c("M3.1", "M3.2", "M8", "M8.2"))]
 
-# remove OTUs that have fewer than 1000 counts
-otu <- otu[rowSums(otu) >= 1000, ]
+# note which OTUs that have fewer than 1000 counts
+too.small.otus <- rowSums(otu) < 1000
 
 # normalize by column (i.e., convert to relative abundances)
 otu <- apply(otu, 2, function(x) x / sum(x)) %>% as.data.frame
+
+# remove OTUs with small counts
+otu <- otu[!too.small.otus, ]
 
 # remove OTUs w/ more than 10% of their reads in the blanks
 otu <- otu[otu$MEB + otu$MSB <= 0.10, ]
@@ -83,8 +86,6 @@ prune <- function(groups, i) {
 # prune each group
 for (i in 1:k) groups <- prune(groups, i)
 
-tabulate(groups)
-
 # filter the groups (i.e., remove ones below a certain abundance threshold)
 for (i in 1:k) {
   group.size <- tabulate(groups)[i]
@@ -104,4 +105,4 @@ while (any(tabulate(groups) == 0)) {
 
 # prepare an output table
 out <- data.frame(otu=names(groups), group=groups)
-write.table(out, file="groups.dat", quote=FALSE, sep="\t", row.names=F)
+write.table(out, file=out.fn, quote=FALSE, sep="\t", row.names=F)
