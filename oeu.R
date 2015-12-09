@@ -7,6 +7,7 @@ k <- 50
 prune.min.cor <- 0.75
 filter.min.size <- 2
 out.fn <- "groups.dat"
+plot.dat.fn <- "plot.dat"
 
 # read in OTU table
 otu <- read.table("otu.txt", header=T, sep="\t", row.names=1)
@@ -106,3 +107,10 @@ while (any(tabulate(groups) == 0)) {
 # prepare an output table
 out <- data.frame(otu=names(groups), group=groups)
 write.table(out, file=out.fn, quote=FALSE, sep="\t", row.names=F)
+
+# prepare a data frame for plotting
+otu$id <- names(groups)
+otu$group <- groups
+otu <- melt(otu, id.vars=c("id", "group"), variable.name="sample")
+otu$depth <- sapply(otu$sample %>% as.list, function(x) sub("M", "", x) %>% as.numeric)
+write.table(otu, file=plot.dat.fn, sep="\t", quote=F)
