@@ -12,9 +12,9 @@ out.fn <- "groups.dat"
 otu <- read.table("otu.txt", header=T, sep="\t", row.names=1)
 
 # pool replicate samples, the drop the originals
-otu$M3.pool <- otu$M3.1 + otu$M3.2
-otu$M8.pool <- otu$M8 + otu$M8.2
-otu <- otu[, !(colnames(otu) %in% c("M3.1", "M3.2", "M8", "M8.2"))]
+otu$M3 <- otu$M3.1 + otu$M3.2
+otu$M8 <- otu$M8.1 + otu$M8.2
+otu <- otu[, !(colnames(otu) %in% c("M3.1", "M3.2", "M8.1", "M8.2"))]
 
 # note which OTUs that have fewer than 1000 counts
 too.small.otus <- rowSums(otu) < 1000
