@@ -1,13 +1,23 @@
 #!/usr/bin/env Rscript
 
-library(ggplot2)
-library(dplyr)
-library(reshape2)
+suppressPackageStartupMessages(library("optparse"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("ggplot2"))
+suppressPackageStartupMessages(library("reshape2"))
 
-# global parameters
-groups.fn <- "groups.dat"
-otu.fn <- "08_aug/otu.txt"
-plot.dir <- "plots"
+p <- OptionParser(usage="%prog [options] groups_dat otu_table")
+p <- add_option(p, c("-p", "--plot_dir"), default="plots",
+  help="directory in which to put all the plots (default: %default)", metavar="DIR")
+args <- parse_args(p, positional_arguments=2)
+
+plot.dir <- args$options$plot_dir
+groups.fn <- args$args[1]
+otu.fn <- args$args[2]
+
+if (!file.info(plot.dir)$isdir) {
+  stop(sprintf("plot directory '%s' does not exist. maybe mkdir it?", plot.dir))
+}
+
 
 # read in the groups data and OTU table
 group <- read.table(groups.fn, header=T, sep="\t")
@@ -23,15 +33,12 @@ dat <- merge(group, otu) %>% melt(id.vars=c("otu", "group"), variable.name="samp
 # add the depths by parsing the sample names
 dat$depth <- sapply(dat$sample %>% as.list, function(x) sub("M", "", x) %>% as.numeric)
 
-write.table(dat, 'tmp2', row.names=F, quote=F, sep="\t")
-
 # plot each piece of the output
 for (g in 1:max(dat$group, na.rm=T)) {
   foo <- filter(dat, group == g)
-  sprintf("group %d has %d rows\n", g, dim(foo)[1]) %>% cat
-  dat %>% filter(group == g) %>%
+  p <- dat %>% filter(group == g) %>%
     ggplot(aes(x=depth, y=value)) + geom_line(aes(group=otu)) +
     theme_minimal()
   fn <- sprintf("%s/plot_%02d.pdf", plot.dir, g)
-  ggsave(fn)
+  ggsave(fn, plot=p)
 }
