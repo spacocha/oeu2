@@ -33,12 +33,3 @@ otu <- otu[otu$M22 <= max.sediment.frac, ]
 otu <- otu[, !(colnames(otu) %in% c("MEB", "MSB", "M22"))]
 
 write.table(otu, "otu.txt", sep="\t", row.names=T, quote=F)
-
-
-## postprocess
-# prepare a data frame for plotting
-otu$id <- names(groups)
-otu$group <- groups
-otu <- melt(otu, id.vars=c("id", "group"), variable.name="sample")
-otu$depth <- sapply(otu$sample %>% as.list, function(x) sub("M", "", x) %>% as.numeric)
-write.table(otu, file=plot.dat.fn, sep="\t", quote=F)
