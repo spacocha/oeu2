@@ -1,51 +1,34 @@
 #!/usr/bin/env Rscript
 
-library(dplyr)
+suppressPackageStartupMessages(library("optparse"))
+suppressPackageStartupMessages(library("dplyr"))
+
+p <- OptionParser(usage="%prog [options] input_otu_table output_groups")
+p <- add_option(p, c("-k", "--candidates"), type="integer", default=50, 
+  help="number of initial/candidate OEUs (default: %default)", metavar="int")
+p <- add_option(p, c("-c", "--correlation"), type="numeric", default=0.75,
+  help="minimum average correlation before pruning an OTU from an OEU (default: %default)", metavar="float")
+p <- add_option(p, c("-n", "--n_otus"), type="integer", default=400,
+  help="number of OTUs to include in the analysis (default: %default)", metavar="int")
+p <- add_option(p, c("-f", "--filter"), type="integer", default=2,
+  help="minimum number of OTUs in an OEU (default: %default)", metavar="int")
+args <- parse_args(p, positional_arguments=2)
+opt <- args$options
+in.fn <- args$args[1]
+out.fn <- args$args[2]
 
 # global parameters
-k <- 50
-min.otu.size <- 1000
-prune.min.cor <- 0.75
-filter.min.size <- 2
-max.blank.frac <- 0.10
-max.sediment.frac <- 0.05
-top.otus <- 400
+k <- opt$candidates
+prune.min.cor <- opt$correlation
+filter.min.size <- opt$filter
+top.otus <- opt$n_otus
 
-out.fn <- "groups.dat"
-plot.dat.fn <- "plot.dat"
-
-# read in OTU table
-otu <- read.table("otu.txt", header=T, sep="\t", row.names=1)
-
-# pool replicate samples, the drop the originals
-otu$M3 <- otu$M3.1 + otu$M3.2
-otu$M8 <- otu$M8.1 + otu$M8.2
-otu <- otu[, !(colnames(otu) %in% c("M3.1", "M3.2", "M8.1", "M8.2"))]
-
-# note which OTUs that have fewer than 1000 counts
-too.small.otus <- rowSums(otu) < min.otu.size
-
-# normalize by column (i.e., convert to relative abundances)
-otu <- apply(otu, 2, function(x) x / sum(x)) %>% as.data.frame
-
-# remove OTUs with small counts
-otu <- otu[!too.small.otus, ]
-
-# remove OTUs w/ more than 10% of their reads in the blanks
-otu <- otu[otu$MEB + otu$MSB <= max.blank.frac, ]
-
-# remove OTUs w/ more than 5% of their reads in the sediment-y sample (M22)
-otu <- otu[otu$M22 <= max.sediment.frac, ]
-
-# remove extra columns
-otu <- otu[, !(colnames(otu) %in% c("MEB", "MSB", "M22"))]
+otu <- read.table(in.fn, header=T, sep="\t", row.names=1)
 
 # sort OTUs by abundance (by summing across rows)
 otu <- otu[order(rowSums(otu), decreasing=TRUE), ]
 
-# swo> there are 484 OTUs now
 # take the most abundant OTUs only
-# otherwise, you get a funny drop-off in r.a. at ~475
 otu <- otu[1:top.otus, ]
 
 # normalize the OTUs by row
@@ -79,8 +62,7 @@ prune <- function(groups, i) {
       sprintf("group %d has minimum mean correlation %f, keeping it\n", i, min.mean.cor) %>% cat
       pruning <- FALSE
     } else {
-      # prune the worst performer
-      # swo> what about ties? should keep the most abundant
+      # prune the worst performer, keeping the most abundant if there's a tie
       min.idx <- which(mean.cors == min(mean.cors)) %>% tail(1)
       groups[members[min.idx]] <- NA
     }
@@ -112,10 +94,3 @@ while (any(tabulate(groups) == 0)) {
 # prepare an output table
 out <- data.frame(otu=names(groups), group=groups)
 write.table(out, file=out.fn, quote=FALSE, sep="\t", row.names=F)
-
-# prepare a data frame for plotting
-otu$id <- names(groups)
-otu$group <- groups
-otu <- melt(otu, id.vars=c("id", "group"), variable.name="sample")
-otu$depth <- sapply(otu$sample %>% as.list, function(x) sub("M", "", x) %>% as.numeric)
-write.table(otu, file=plot.dat.fn, sep="\t", quote=F)
