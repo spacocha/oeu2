@@ -6,7 +6,7 @@ min.otu.size <- 100
 max.sediment.frac <- 0.05
 
 # read in OTU table
-otu <- read.table("raw_rename.txt", header=T, sep="\t", row.names=1)
+otu <- read.table("otu_rename.txt", header=T, sep="\t", row.names=1)
 
 sum.columns <- function(otu, res, cols) {
   otu[[res]] <- 0
