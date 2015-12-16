@@ -14,7 +14,8 @@ plot.dir <- args$options$plot_dir
 groups.fn <- args$args[1]
 otu.fn <- args$args[2]
 
-if (!file.info(plot.dir)$isdir) {
+stat <- file.info(plot.dir)
+if (is.na(stat) || !stat$isdir) {
   stop(sprintf("plot directory '%s' does not exist. maybe mkdir it?", plot.dir))
 }
 

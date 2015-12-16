@@ -29,7 +29,12 @@ otu <- read.table(in.fn, header=T, sep="\t", row.names=1)
 otu <- otu[order(rowSums(otu), decreasing=TRUE), ]
 
 # take the most abundant OTUs only
-otu <- otu[1:top.otus, ]
+n.otus <- dim(otu)[1]
+if (n.otus < top.otus) {
+  sprintf("only %d OTUs left after filtering, fewer than max %d, proceeding anyway", n.otus, top.otus) %>% cat
+} else {
+  otu <- otu[1:top.otus, ]
+}
 
 # normalize the OTUs by row
 otu <- apply(otu, 1, function(x) x / sum(x)) %>% t %>% as.data.frame
