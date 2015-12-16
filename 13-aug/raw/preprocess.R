@@ -39,4 +39,9 @@ otu <- otu[otu$M22 <= max.sediment.frac, ]
 # remove extra columns
 otu <- otu[, !(colnames(otu) %in% c("M22"))]
 
+# put the OTU IDs back
+sample.ids <- colnames(otu)
+otu$OTU_ID <- rownames(otu)
+otu <- otu[, c('OTU_ID', sample.ids)]
+
 write.table(otu, "otu.txt", sep="\t", row.names=T, quote=F)

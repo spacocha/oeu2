@@ -7,7 +7,7 @@ max.blank.frac <- 0.10
 max.sediment.frac <- 0.05
 
 # read in OTU table
-otu <- read.table("raw_rename.txt", header=T, sep="\t", row.names=1)
+otu <- read.table("otu_rename.txt", header=T, sep="\t", row.names=1)
 
 sum.columns <- function(otu, res, cols) {
   otu[[res]] <- 0
@@ -40,4 +40,9 @@ otu <- otu[otu$M22 <= max.sediment.frac, ]
 # remove extra columns
 otu <- otu[, !(colnames(otu) %in% c("MEB", "MSB", "M22"))]
 
-write.table(otu, "otu.txt", sep="\t", row.names=T, quote=F)
+# put the OTU IDs back
+sample.ids <- colnames(otu)
+otu$OTU_ID <- rownames(otu)
+otu <- otu[, c('OTU_ID', sample.ids)]
+
+write.table(otu, "otu.txt", sep="\t", row.names=F, quote=F)
