@@ -8,8 +8,8 @@ p <- add_option(p, c("-k", "--candidates"), type="integer", default=50,
   help="number of initial/candidate OEUs (default: %default)", metavar="int")
 p <- add_option(p, c("-c", "--correlation"), type="numeric", default=0.75,
   help="minimum average correlation before pruning an OTU from an OEU (default: %default)", metavar="float")
-p <- add_option(p, c("-n", "--n_otus"), type="integer", default=400,
-  help="number of OTUs to include in the analysis (default: %default)", metavar="int")
+p <- add_option(p, c("-n", "--n_otus"), type="integer", default=-1,
+  help="number of OTUs to include in the analysis (default: %default means no limit)", metavar="int")
 p <- add_option(p, c("-f", "--filter"), type="integer", default=2,
   help="minimum number of OTUs in an OEU (default: %default)", metavar="int")
 args <- parse_args(p, positional_arguments=2)
@@ -30,7 +30,9 @@ otu <- otu[order(rowSums(otu), decreasing=TRUE), ]
 
 # take the most abundant OTUs only
 n.otus <- dim(otu)[1]
-if (n.otus < top.otus) {
+if (top.otus == -1) {
+  sprintf("keeping all OTUs") %>% cat
+} else if (n.otus < top.otus) {
   sprintf("only %d OTUs left after filtering, fewer than max %d, proceeding anyway", n.otus, top.otus) %>% cat
 } else {
   otu <- otu[1:top.otus, ]

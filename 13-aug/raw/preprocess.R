@@ -44,4 +44,4 @@ sample.ids <- colnames(otu)
 otu$OTU_ID <- rownames(otu)
 otu <- otu[, c('OTU_ID', sample.ids)]
 
-write.table(otu, "otu.txt", sep="\t", row.names=T, quote=F)
+write.table(otu, "otu.txt", sep="\t", row.names=F, quote=F)
