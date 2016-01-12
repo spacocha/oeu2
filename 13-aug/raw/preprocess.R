@@ -2,11 +2,12 @@
 
 library(dplyr)
 
-min.otu.size <- 100
+min.otu.size <- 0.0025
+max.blank.frac <- 0.10
 max.sediment.frac <- 0.05
 
 # read in OTU table
-otu <- read.table("otu_rename.txt", header=T, sep="\t", row.names=1)
+otu <- read.table("otu_counts.txt", header=T, sep="\t", row.names=1)
 
 sum.columns <- function(otu, res, cols) {
   otu[[res]] <- 0
@@ -15,29 +16,50 @@ sum.columns <- function(otu, res, cols) {
   otu
 }
 
-# pool replicate samples, the drop the originals
-otu <- otu %>%
-  sum.columns("M10", c("M10.1", "M10.2")) %>%
-  sum.columns("M11", c("M11.1", "M11.2")) %>%
-  sum.columns("M14", c("M14.1", "M14.2")) %>%
-  sum.columns("M17", c("M17.1", "M17.2")) %>%
-  sum.columns("M2", c("M2.1", "M2.2")) %>%
-  sum.columns("M7", c("M7.1", "M7.2")) %>%
-  sum.columns("M9", c("M9.1", "M9.2"))
+rename.columns <- function(otu, res, cols) {
+  otu[[res]] <- 0
+  otu[[res]] <- otu[[cols]]
+  otu <- otu[, !(colnames(otu) %in% cols)]
+  otu
+}
 
-too.small.otus <- rowSums(otu) < min.otu.size
+# pool replicate samples, the drop the originals
+otu <- sum.columns(otu, "M02", c("SB081213TAWMD02VV4TMR1", "SB081213TAWMD02VV4TMR2"))
+otu <- rename.columns(otu, "M03", c("SB081213TAWMD03VV4TMR1"))
+otu <- rename.columns(otu, "M04", c("SB081213TAWMD04VV4TMR1"))
+otu <- sum.columns(otu, "M06", c("SB081213TAWMD06VV4TMR1", "SB081213TAWMD06VV4TMR2"))
+otu <- sum.columns(otu, "M07", c("SB081213TAWMD07VV4TMR1", "SB081213TAWMD07VV4TMR2"))
+otu <- rename.columns(otu, "M08", c("SB081213TAWMD08VV4TMR1"))
+otu <- sum.columns(otu, "M09", c("SB081213TAWMD09VV4TMR1", "SB081213TAWMD09VV4TMR2"))
+otu <- sum.columns(otu, "M10", c("SB081213TAWMD10VV4TMR1", "SB081213TAWMD10VV4TMR2"))
+otu <- sum.columns(otu, "M11", c("SB081213TAWMD11VV4TMR1", "SB081213TAWMD11VV4TMR2"))
+otu <- rename.columns(otu, "M12", c("SB081213TAWMD12VV4TMR1"))
+otu <- rename.columns(otu, "M13", c("SB081213TAWMD13VV4TMR1"))
+otu <- sum.columns(otu, "M14", c("SB081213TAWMD14VV4TMR1", "SB081213TAWMD14VV4TMR2"))
+otu <- sum.columns(otu, "M15", c("SB081213TAWMD15VV4TMR1", "SB081213TAWMD15VV4TMR2"))
+otu <- sum.columns(otu, "M17", c("SB081213TAWMD17VV4TMR1", "SB081213TAWMD17VV4TMR2"))
+otu <- rename.columns(otu, "M20", c("SB081213TAWMD20VV4TMR1"))
+otu <- rename.columns(otu, "M21", c("SB081213TAWMD21VV4TMR1"))
+otu <- rename.columns(otu, "M22", c("SB081213TAWMD22VV4TMR1"))
+otu <- sum.columns(otu, "MEB", c("SB081213TAWMDEBVV4TMR1", "SB081213TAWMDEBVV4TMR2"))
 
 # normalize by column (i.e., convert to relative abundances)
 otu <- apply(otu, 2, function(x) x / sum(x)) %>% as.data.frame
 
-# remove OTUs with small counts
-otu <- otu[!too.small.otus, ]
+# remove OTUs w/ more than 10% of their reads in the blanks
+otu <- otu[otu$MEB  <= max.blank.frac, ]
 
 # remove OTUs w/ more than 5% of their reads in the sediment-y sample (M22)
-otu <- otu[otu$M22 <= max.sediment.frac, ]
+# otu <- otu[otu$M22 <= max.sediment.frac, ]
 
 # remove extra columns
-otu <- otu[, !(colnames(otu) %in% c("M22"))]
+otu <- otu[, !(colnames(otu) %in% c("MEB"))]
+
+# note which OTUs that have less than min.frac
+too.small.otus <- rowSums(otu) < min.otu.size
+
+# remove OTUs with small counts
+otu <- otu[!too.small.otus, ]
 
 # put the OTU IDs back
 sample.ids <- colnames(otu)
